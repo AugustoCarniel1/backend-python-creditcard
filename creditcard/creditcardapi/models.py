@@ -5,7 +5,7 @@ class CreditCardBrand(models.Model):
     description = models.CharField(max_length=64)
 
 
-class CreditCard(models.Model):
+class CreditCardModel(models.Model):
     exp_date = models.DateField()
     holder = models.CharField(max_length=128)
     number = models.CharField(max_length=20)

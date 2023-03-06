@@ -1,10 +1,10 @@
-from card_identifier.card_type import identify_card_type
-from card_identifier.cardutils import validate_card
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import CreditCard
+from creditcard import CreditCard
+
+from .models import CreditCardModel
 from .serializer import CreditCardSerializer
 
 
@@ -15,7 +15,7 @@ def credit_card(request):
 
         try:
 
-            card_list = CreditCard.objects.all()
+            card_list = CreditCardModel.objects.all()
 
             serializer = CreditCardSerializer(card_list, many=True)
 
@@ -37,7 +37,9 @@ def credit_card(request):
 
             params = request.data
 
-            credit_card = CreditCard(
+            cc = CreditCard
+
+            credit_card = CreditCardModel(
                 exp_date=params["exp_date"],
                 holder=params["holder"],
                 number=params["number"],

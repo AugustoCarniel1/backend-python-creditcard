@@ -1,10 +1,10 @@
 from django.contrib import admin
 
-from .models import CreditCard
+from .models import CreditCardModel
 
 
 class CreditCardAdmin(admin.ModelAdmin):
     ...
 
 
-admin.site.register(CreditCard, CreditCardAdmin)
+admin.site.register(CreditCardModel, CreditCardAdmin)
