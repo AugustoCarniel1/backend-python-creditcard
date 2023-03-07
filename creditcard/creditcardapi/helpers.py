@@ -1,5 +1,8 @@
 from datetime import datetime
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+
 from creditcard.exceptions import BrandNotFound
 
 from .exception import *
@@ -21,11 +24,15 @@ def basic_info_verifier(params, credit_card):
     try:
 
         expiration_date = datetime.strptime(
-            params["exp_date"], "%m/%Y").strftime()
-
+            params["exp_date"], "%m/%Y")
+        print(expiration_date, datetime.now())
         if expiration_date < datetime.now():
 
             raise InvalidDateException
+
+        else:
+
+            expiration_date.strftime("%m/%d/%Y")
 
     except:
 
@@ -35,3 +42,27 @@ def basic_info_verifier(params, credit_card):
         'brand': brand,
         'expiration_date': expiration_date
     }
+
+
+def read_keys(type):
+
+    if type == "public":
+
+        with open("public_key.pem", "rb") as key_file:
+            public_key = serialization.load_pem_public_key(
+                key_file.read(),
+                backend=default_backend()
+            )
+
+        return public_key
+
+    else:
+
+        with open("private_key.pem", "rb") as key_file:
+            private_key = serialization.load_pem_private_key(
+                key_file.read(),
+                password=None,
+                backend=default_backend()
+            )
+
+        return private_key

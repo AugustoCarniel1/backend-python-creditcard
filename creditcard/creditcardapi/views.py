@@ -1,18 +1,21 @@
-import rsa
-from creditcardmain.settings import PRIVATE_KEY, PUBLIC_KEY
+import base64
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
-                                   HTTP_400_BAD_REQUEST,
+                                   HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED,
                                    HTTP_500_INTERNAL_SERVER_ERROR)
 
 from creditcard import CreditCard
 from creditcard.exceptions import BrandNotFound
 
 from .exception import *
-from .helpers import basic_info_verifier
+from .helpers import basic_info_verifier, read_keys
 from .models import CreditCardBrand, CreditCardModel
 from .serializer import CreditCardSerializer
+from .utils import decrypt_credit_card_number, encrypt_credit_card_number
 
 
 @api_view(["GET", "POST"])
@@ -38,82 +41,112 @@ def credit_card(request):
 
     else:
 
-        try:
+        # try:
 
-            params = request.data
+        params = request.data
 
-            credit_card = CreditCard(params["number"])
+        credit_card = CreditCard(params["number"])
 
-            response = basic_info_verifier(params, credit_card)
+        response = basic_info_verifier(params, credit_card)
 
-            brand_obj = CreditCardBrand.objects.get(
-                description=response['brand'])
+        brand_obj = CreditCardBrand.objects.get(
+            description__icontains=response['brand'])
 
-            encoded_number = rsa.encrypt(params["number"].encode(), PUBLIC_KEY)
+        public_key = read_keys('public')
 
-            credit_card = CreditCardModel(
-                exp_date=response['expiration_date'],
-                holder=params["holder"],
-                number=encoded_number,
-                cvv=params["cvv"] if params["cvv"] else "",
-                brand=brand_obj
-            )
+        print(public_key)
 
-            credit_card.save()
+        encrypted_number = encrypt_credit_card_number(
+            public_key, params["number"])
 
-            serializer = CreditCardSerializer(credit_card)
+        credit_card = CreditCardModel(
+            exp_date=response['expiration_date'],
+            holder=params["holder"],
+            number=encrypted_number,
+            cvv=params["cvv"] if params["cvv"] else "",
+            brand=brand_obj
+        )
 
-            return Response({
-                "message": "Credit card registered with success",
-                "card_id": credit_card.id
-            }, status=HTTP_201_CREATED)
+        credit_card.save()
 
-        except BrandNotFound:
-            return Response({
-                "message": "Brand Not Found"
-            }, status=HTTP_400_BAD_REQUEST)
+        serializer = CreditCardSerializer(credit_card)
 
-        except InvalidCreditCardNumberException:
-            return Response({
-                "message": "Invalid Credit Card Number"
-            }, status=HTTP_400_BAD_REQUEST)
+        return Response({
+            "message": "Credit card registered with success",
+            "card_id": credit_card.id
+        }, status=HTTP_201_CREATED)
 
-        except InvalidDateException:
-            return Response({
-                "message": "Invalid Expiration Date, must be later than now and valid"
-            }, status=HTTP_400_BAD_REQUEST)
+        # except BrandNotFound:
+        #     return Response({
+        #         "message": "Brand Not Found"
+        #     }, status=HTTP_400_BAD_REQUEST)
 
-        except InvalidHolderException:
-            return Response({
-                "message": "Invalid Holder Name, must have at least 2 characters"
-            }, status=HTTP_400_BAD_REQUEST)
+        # except InvalidCreditCardNumberException:
+        #     return Response({
+        #         "message": "Invalid Credit Card Number"
+        #     }, status=HTTP_400_BAD_REQUEST)
 
-        except:
-            return Response({
-                "message": "Error, code failed at card creation"
-            }, status=HTTP_500_INTERNAL_SERVER_ERROR)
+        # except InvalidDateException:
+        #     return Response({
+        #         "message": "Invalid Expiration Date, must be later than now and valid"
+        #     }, status=HTTP_400_BAD_REQUEST)
+
+        # except InvalidHolderException:
+        #     return Response({
+        #         "message": "Invalid Holder Name, must have at least 2 characters"
+        #     }, status=HTTP_400_BAD_REQUEST)
+
+        # except:
+        #     return Response({
+        #         "message": "Error, code failed at card creation"
+        #     }, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@ api_view(["GET"])
+@api_view(["GET"])
 def check_single_card(request, key):
 
-    print(key)
+    # if request.query_params["private_key"] != PRIVATE_KEY:
+    #     return Response({
+    #         "message": "Unauthorized"
+    #     }, status=HTTP_401_UNAUTHORIZED)
 
     credit_card = CreditCardModel.objects.get(pk=key)
 
     serializer = CreditCardSerializer(credit_card)
 
-    serializer.data["number"] = rsa.decrypt(
-        serializer.data["number"], PRIVATE_KEY).decode()
+    private_key = read_keys('private')
+
+    serializer_data = serializer.data
+    serializer_data["number"] = decrypt_credit_card_number(
+        private_key, credit_card.number)
 
     return Response({
-        "credit_card": serializer.data
+        "credit_card": serializer_data
     }, status=HTTP_200_OK)
 
-# class CreditCardViews(APIView):
 
-#     def get(self, request):
-#         ...
+@api_view(["POST"])
+def generate_keys(request):
 
-#     def post(self, request):
-#         ...
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048
+    )
+    public_key = private_key.public_key()
+
+    with open('private_key.pem', 'wb') as f:
+        f.write(private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        ))
+
+    with open('public_key.pem', 'wb') as f:
+        f.write(public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ))
+
+    return Response({
+        "message": "Keys generated with success"
+    }, status=HTTP_200_OK)

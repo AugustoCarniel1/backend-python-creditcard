@@ -12,4 +12,5 @@ urlpatterns = [
     path('api/v1/credit-card', views.credit_card, name='credit-card'),
     path('api/v1/credit-card/<int:key>',
          views.check_single_card, name='single-credit-card'),
+    path('api/v1/generate-key', views.generate_keys, name='generate-keys')
 ]
