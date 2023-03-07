@@ -7,9 +7,10 @@ from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
                                    HTTP_500_INTERNAL_SERVER_ERROR)
 
 from creditcard import CreditCard
+from creditcard.exceptions import BrandNotFound
 
 from .exception import *
-from .models import CreditCardModel
+from .models import CreditCardBrand, CreditCardModel
 from .serializer import CreditCardSerializer
 
 
@@ -40,18 +41,40 @@ def credit_card(request):
 
             params = request.data
 
-            cc = CreditCard(params["number"])
+            credit_card = CreditCard(params["number"])
 
-            if not cc.is_valid():
+            if not credit_card.is_valid():
                 raise InvalidCreditCardNumberException
 
-            expiration_date = datetime.strftime()
+            try:
+
+                brand = credit_card.get_brand()
+
+            except:
+
+                raise BrandNotFound
+
+            try:
+
+                expiration_date = datetime.strptime(
+                    params["exp_date"], "%m/%Y").strftime()
+
+                if expiration_date < datetime.now():
+
+                    raise InvalidDateException
+
+            except:
+
+                raise InvalidDateException
+
+            brand_obj = CreditCardBrand.objects.get(description=brand)
 
             credit_card = CreditCardModel(
-                exp_date=params["exp_date"],
+                exp_date=expiration_date,
                 holder=params["holder"],
                 number=params["number"],
-                cvv=params["cvv"]
+                cvv=params["cvv"] if params["cvv"] else "",
+                brand=brand_obj
             )
 
             credit_card.save()
@@ -63,6 +86,11 @@ def credit_card(request):
                 "card_id": credit_card.id
             })
 
+        except BrandNotFound:
+            return Response({
+                "message": "Brand Not Found"
+            }, status=HTTP_400_BAD_REQUEST)
+
         except InvalidCreditCardNumberException:
             return Response({
                 "message": "Invalid Credit Card Number"
@@ -70,17 +98,33 @@ def credit_card(request):
 
         except InvalidDateException:
             return Response({
-                "message": "Invalid Expiration Date"
+                "message": "Invalid Expiration Date, must be later than now and valid"
+            }, status=HTTP_400_BAD_REQUEST)
+
+        except InvalidHolderException:
+            return Response({
+                "message": "Invalid Holder Name, must have at least 2 characters"
             }, status=HTTP_400_BAD_REQUEST)
 
         except:
 
-            ...
+            return Response({
+                "message": "Error, code failed at card creation"
+            }, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @ api_view(["GET"])
-def check_single_card(request):
-    ...
+def check_single_card(request, key):
+
+    print(key)
+
+    credit_card = CreditCardModel.objects.get(pk=key)
+
+    serializer = CreditCardSerializer(credit_card)
+
+    return Response({
+        "credit_card": serializer.data
+    }, status=HTTP_200_OK)
 
 # class CreditCardViews(APIView):
 

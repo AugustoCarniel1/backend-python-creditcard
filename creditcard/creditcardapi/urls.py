@@ -11,5 +11,5 @@ from django.urls import path
 urlpatterns = [
     path('api/v1/credit-card', views.credit_card, name='credit-card'),
     path('api/v1/credit-card/<int:key>',
-         views.credit_card, name='single-credit-card'),
+         views.check_single_card, name='single-credit-card'),
 ]

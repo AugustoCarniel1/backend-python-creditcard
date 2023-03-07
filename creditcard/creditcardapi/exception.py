@@ -4,3 +4,7 @@ class InvalidCreditCardNumberException(Exception):
 
 class InvalidDateException(Exception):
     pass
+
+
+class InvalidHolderException(Exception):
+    pass

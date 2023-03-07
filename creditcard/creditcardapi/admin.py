@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import CreditCardModel
+from .models import CreditCardBrand, CreditCardModel
+
+
+class CreditCardBrandAdmin(admin.ModelAdmin):
+    ...
+
+
+admin.site.register(CreditCardBrand, CreditCardBrandAdmin)
 
 
 class CreditCardAdmin(admin.ModelAdmin):
