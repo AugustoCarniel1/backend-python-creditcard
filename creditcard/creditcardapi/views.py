@@ -10,6 +10,7 @@ from creditcard import CreditCard
 from creditcard.exceptions import BrandNotFound
 
 from .exception import *
+from .helpers import basic_info_verifier
 from .models import CreditCardBrand, CreditCardModel
 from .serializer import CreditCardSerializer
 
@@ -43,34 +44,13 @@ def credit_card(request):
 
             credit_card = CreditCard(params["number"])
 
-            if not credit_card.is_valid():
-                raise InvalidCreditCardNumberException
+            response = basic_info_verifier(params, credit_card)
 
-            try:
-
-                brand = credit_card.get_brand()
-
-            except:
-
-                raise BrandNotFound
-
-            try:
-
-                expiration_date = datetime.strptime(
-                    params["exp_date"], "%m/%Y").strftime()
-
-                if expiration_date < datetime.now():
-
-                    raise InvalidDateException
-
-            except:
-
-                raise InvalidDateException
-
-            brand_obj = CreditCardBrand.objects.get(description=brand)
+            brand_obj = CreditCardBrand.objects.get(
+                description=response['brand'])
 
             credit_card = CreditCardModel(
-                exp_date=expiration_date,
+                exp_date=response['expiration_date'],
                 holder=params["holder"],
                 number=params["number"],
                 cvv=params["cvv"] if params["cvv"] else "",
