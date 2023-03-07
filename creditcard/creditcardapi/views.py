@@ -1,5 +1,5 @@
-from datetime import datetime
-
+import rsa
+from creditcardmain.settings import PRIVATE_KEY, PUBLIC_KEY
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
@@ -49,10 +49,12 @@ def credit_card(request):
             brand_obj = CreditCardBrand.objects.get(
                 description=response['brand'])
 
+            encoded_number = rsa.encrypt(params["number"].encode(), PUBLIC_KEY)
+
             credit_card = CreditCardModel(
                 exp_date=response['expiration_date'],
                 holder=params["holder"],
-                number=params["number"],
+                number=encoded_number,
                 cvv=params["cvv"] if params["cvv"] else "",
                 brand=brand_obj
             )
@@ -64,7 +66,7 @@ def credit_card(request):
             return Response({
                 "message": "Credit card registered with success",
                 "card_id": credit_card.id
-            })
+            }, status=HTTP_201_CREATED)
 
         except BrandNotFound:
             return Response({
@@ -87,7 +89,6 @@ def credit_card(request):
             }, status=HTTP_400_BAD_REQUEST)
 
         except:
-
             return Response({
                 "message": "Error, code failed at card creation"
             }, status=HTTP_500_INTERNAL_SERVER_ERROR)
@@ -101,6 +102,9 @@ def check_single_card(request, key):
     credit_card = CreditCardModel.objects.get(pk=key)
 
     serializer = CreditCardSerializer(credit_card)
+
+    serializer.data["number"] = rsa.decrypt(
+        serializer.data["number"], PRIVATE_KEY).decode()
 
     return Response({
         "credit_card": serializer.data
