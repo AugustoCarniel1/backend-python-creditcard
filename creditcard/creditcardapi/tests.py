@@ -1,11 +1,8 @@
-from datetime import date, timedelta
-
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from rest_framework.test import (APIRequestFactory, APITestCase,
                                  force_authenticate)
 
-from .models import CreditCardBrand, CreditCardModel
 from .views import CreditCardList, CreditCardView
 
 
