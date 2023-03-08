@@ -13,6 +13,10 @@ def basic_info_verifier(params, credit_card):
     if not credit_card.is_valid():
         raise InvalidCreditCardNumberException
 
+    holder_name_verify = params['holder'].replace(' ', '')
+    if len(holder_name_verify) < 3:
+        raise InvalidHolderException
+
     try:
 
         brand = credit_card.get_brand()
