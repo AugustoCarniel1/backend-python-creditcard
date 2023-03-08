@@ -24,7 +24,7 @@ from .exception import *
 from .helpers import basic_info_verifier, read_keys
 from .models import CreditCardBrand, CreditCardModel
 from .serializer import CreditCardSerializer
-from .utils import decrypt_credit_card_number, encrypt_credit_card_number
+from .utils import encrypt_credit_card_number
 
 
 @api_view(['POST'])
@@ -63,6 +63,7 @@ class CreditCardView(APIView):
 
         try:
 
+            # Check for unit test
             if not key and 'key' in request.query_params:
                 key = request.query_params['key']
 
@@ -95,6 +96,7 @@ class CreditCardView(APIView):
 
             response = basic_info_verifier(params, credit_card)
 
+            # Create a brand if it doesn't registered in db
             try:
                 brand_obj = CreditCardBrand.objects.get(
                     description__icontains=response['brand'])
@@ -150,6 +152,7 @@ class CreditCardView(APIView):
 
 class CreditCardList(APIView):
 
+    # Garants all the function an auth
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 

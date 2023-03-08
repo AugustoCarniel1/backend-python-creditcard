@@ -1,10 +1,6 @@
-import base64
+from datetime import datetime
 
-from django.conf import settings
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from rest_framework.authtoken.models import Token
 
 from .helpers import read_keys
 from .utils import decrypt_credit_card_number
@@ -32,3 +28,7 @@ class CreditCardModel(models.Model):
         private_key = read_keys('private')
 
         return decrypt_credit_card_number(private_key, self.number)
+
+    def format_date(self):
+
+        return self.exp_date.strftime("%m/%Y")

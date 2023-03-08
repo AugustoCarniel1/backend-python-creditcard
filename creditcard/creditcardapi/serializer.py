@@ -1,15 +1,11 @@
 from rest_framework import serializers
 
-from .helpers import read_keys
 from .models import CreditCardModel
-from .utils import decrypt_credit_card_number
-
-private_key = read_keys('private')
 
 
 class CreditCardSerializer(serializers.Serializer):
 
-    exp_date = serializers.DateField()
+    exp_date = serializers.ReadOnlyField(source='format_date')
     holder = serializers.CharField(max_length=128)
     number = serializers.ReadOnlyField(source='decrypt')
     cvv = serializers.CharField(max_length=3)

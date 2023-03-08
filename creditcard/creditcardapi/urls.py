@@ -3,17 +3,6 @@ from django.urls import path
 from .views import (CreditCardList, CreditCardView, CustomAuthToken,
                     generate_keys)
 
-# super user
-# augusto.carniel
-# 123456
-
-# db1affdd21aa4f41325aaf2347faf89597fbcf88
-
-
-# another libs
-# django-crispy-forms-2.0
-# httpie
-
 urlpatterns = [
     path('api/v1/credit-card', CreditCardView.as_view()),
     path('api/v1/credit-card/list', CreditCardList.as_view()),
