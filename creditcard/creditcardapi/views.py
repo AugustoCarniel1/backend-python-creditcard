@@ -1,25 +1,25 @@
-#RestFrameWork
+# Cryptography API
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+# Django
+from django.core.exceptions import ObjectDoesNotExist
+# RestFrameWork
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
+                                   HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND,
+                                   HTTP_500_INTERNAL_SERVER_ERROR)
 from rest_framework.views import APIView
 
-from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
-                                   HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED,
-                                   HTTP_500_INTERNAL_SERVER_ERROR)
-
-#Credit Card API
+# Credit Card API
 from creditcard import CreditCard
 from creditcard.exceptions import BrandNotFound
 
-#Cryptography API
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-
-#Own project files
+# Own project files
 from .exception import *
 from .helpers import basic_info_verifier, read_keys
 from .models import CreditCardBrand, CreditCardModel
@@ -27,7 +27,7 @@ from .serializer import CreditCardSerializer
 from .utils import decrypt_credit_card_number, encrypt_credit_card_number
 
 
-@api_view(["POST"])
+@api_view(['POST'])
 def generate_keys(request):
 
     private_key = rsa.generate_private_key(
@@ -50,9 +50,8 @@ def generate_keys(request):
         ))
 
     return Response({
-        "message": "Keys generated with success"
+        'message': 'Keys generated with success'
     }, status=HTTP_200_OK)
-
 
 
 class CreditCardView(APIView):
@@ -60,21 +59,31 @@ class CreditCardView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, key):
+    def get(self, request, key=None):
 
-        credit_card = CreditCardModel.objects.get(pk=key)
+        try:
 
-        serializer = CreditCardSerializer(credit_card)
+            if not key and 'key' in request.query_params:
+                key = request.query_params['key']
 
-        private_key = read_keys('private')
+            credit_card = CreditCardModel.objects.get(pk=key)
 
-        serializer_data = serializer.data
-        serializer_data["number"] = decrypt_credit_card_number(
-            private_key, credit_card.number)
+            serializer = CreditCardSerializer(credit_card)
 
-        return Response({
-            "credit_card": serializer_data
-        }, status=HTTP_200_OK)
+            return Response({
+                'message': 'Credit card information successfully listed',
+                'credit_card': serializer.data
+            }, status=HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({
+                'message': 'The specified card does not exist'
+            }, status=HTTP_404_NOT_FOUND)
+
+        except:
+            return Response({
+                'message': 'Error, cannot list the informations'
+            }, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
 
@@ -82,60 +91,60 @@ class CreditCardView(APIView):
 
             params = request.data
 
-            credit_card = CreditCard(params["number"])
+            credit_card = CreditCard(params['number'])
 
             response = basic_info_verifier(params, credit_card)
 
-            brand_obj = CreditCardBrand.objects.get(
-                description__icontains=response['brand'])
+            try:
+                brand_obj = CreditCardBrand.objects.get(
+                    description__icontains=response['brand'])
+            except:
+                brand_obj = CreditCardBrand.objects.create(
+                    description=response['brand'])
 
             public_key = read_keys('public')
 
-            print(public_key)
-
             encrypted_number = encrypt_credit_card_number(
-                public_key, params["number"])
+                public_key, params['number'])
 
             credit_card = CreditCardModel(
                 exp_date=response['expiration_date'],
-                holder=params["holder"],
+                holder=params['holder'],
                 number=encrypted_number,
-                cvv=params["cvv"] if params["cvv"] else "",
+                cvv=params['cvv'] if params['cvv'] else '',
                 brand=brand_obj
             )
 
             credit_card.save()
 
-            serializer = CreditCardSerializer(credit_card)
-
             return Response({
-                "message": "Credit card registered with success",
-                "card_id": credit_card.id
+                'message': 'Credit card registered with success',
+                'card_id': credit_card.id
             }, status=HTTP_201_CREATED)
 
         except BrandNotFound:
             return Response({
-                "message": "Brand Not Found"
+                'message': 'Brand Not Found'
             }, status=HTTP_400_BAD_REQUEST)
 
         except InvalidCreditCardNumberException:
             return Response({
-                "message": "Invalid Credit Card Number"
+                'message': 'Invalid Credit Card Number'
             }, status=HTTP_400_BAD_REQUEST)
 
         except InvalidDateException:
             return Response({
-                "message": "Invalid Expiration Date, must be later than now and valid"
+                'message': 'Invalid Expiration Date, must be later than now and valid'
             }, status=HTTP_400_BAD_REQUEST)
 
         except InvalidHolderException:
             return Response({
-                "message": "Invalid Holder Name, must have at least 2 characters"
+                'message': 'Invalid Holder Name, must have at least 2 characters'
             }, status=HTTP_400_BAD_REQUEST)
 
         except:
             return Response({
-                "message": "Error, code failed at card creation"
+                'message': 'Error, code failed at card creation'
             }, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -153,13 +162,13 @@ class CreditCardList(APIView):
             serializer = CreditCardSerializer(card_list, many=True)
 
             return Response({
-                "credit_card_list": serializer.data
+                'message': 'List of credit cards successfully listed',
+                'credit_card_list': serializer.data
             }, status=HTTP_200_OK)
 
         except:
-
             return Response({
-                "message": "Error 5XX"
+                'message': 'Error, Cannot list all cards'
             }, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
 

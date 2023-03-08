@@ -25,7 +25,7 @@ def basic_info_verifier(params, credit_card):
 
         expiration_date = datetime.strptime(
             params["exp_date"], "%m/%Y")
-        print(expiration_date, datetime.now())
+
         if expiration_date < datetime.now():
 
             raise InvalidDateException
